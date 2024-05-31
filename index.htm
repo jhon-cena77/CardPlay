@@ -1,0 +1,207 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CardPlay-alt+ctrl+4 for settings</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: rgb(10, 70, 10);
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="game"></canvas>   
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {	
+            const canvas = document.getElementById("game");
+            const ctx = canvas.getContext("2d");
+
+            // Adjust canvas size to match the window
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const deck = {
+                x: 10,
+                y: 10,
+                width: 50,
+                height: 70
+            };
+
+            const cards = [];
+            let draggedCard = null;
+            let dragOffsetX = 0;
+            let dragOffsetY = 0;
+
+            // Standard deck values and suits
+            const values = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+	
+            const suits = ["♠", "♥", "♣", "♦"];
+
+            // Number of Jokers to add
+            const numberOfJokers = 2;
+
+            // Create a shuffled deck with the specified number of Jokers
+            const deckSize = 52 + numberOfJokers;
+            const cardDeck = createShuffledDeck();
+
+            // Define RGB colors for each suit and Jokers
+            const suitColors = {
+                "♠": "rgb(0, 0, 0)",
+                "♥": "rgb(255, 0, 0)",
+                "♣": "rgb(0, 0, 0)",
+                "♦": "rgb(255, 0, 0)",
+                "Joker": "rgb(0, 0, 0)" 
+            };
+
+            function createShuffledDeck() {
+                const deck = [];
+                for (let suit of suits) {
+                    for (let value of values) {
+                        deck.push({ value, suit });
+                    }
+                }
+
+                // Add Jokers
+                for (let i = 0; i < numberOfJokers; i++) {
+                    deck.push({ value: "Joker", suit: "Joker" });
+                }
+
+                // Shuffle the deck
+                for (let i = deck.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [deck[i], deck[j]] = [deck[j], deck[i]];
+                }
+
+                return deck.slice(0, deckSize);
+            }
+
+            // Mouse down event: start dragging a card if over the deck and deckSize limit is not reached
+            canvas.addEventListener("mousedown", function(event) {
+                const mouseX = event.clientX;
+                const mouseY = event.clientY;
+
+                // Check if mouse is over the deck
+                if (cards.length < deckSize && isOverDeck(mouseX, mouseY)) {
+                    const cardInfo = cardDeck[cards.length];  // Get the next card from the shuffled deck
+                    const card = {
+                        x: mouseX - deck.width / 2,
+                        y: mouseY - deck.height / 2,
+                        width: deck.width,
+                        height: deck.height,
+                        faceUp: false,
+                        value: cardInfo.value,
+                        suit: cardInfo.suit
+                    };
+                    cards.push(card);
+                    draggedCard = card;
+                    dragOffsetX = mouseX - card.x;
+                    dragOffsetY = mouseY - card.y;
+                } else {
+                    // Check if the mouse is over any card to start dragging it
+                    for (let card of cards) {
+                        if (isOverCard(mouseX, mouseY, card)) {
+                            draggedCard = card;
+                            dragOffsetX = mouseX - card.x;
+                            dragOffsetY = mouseY - card.y;
+                            break;
+                        }
+                    }
+                }
+            });
+
+            canvas.addEventListener("mousemove", function(event) {
+                if (draggedCard) {
+                    draggedCard.x = event.clientX - dragOffsetX;
+                    draggedCard.y = event.clientY - dragOffsetY;
+                }
+            });
+
+            canvas.addEventListener("mouseup", function() {
+                draggedCard = null;
+            });
+
+            // Double-click event to flip the card
+            canvas.addEventListener("dblclick", function(event) {
+                const mouseX = event.clientX;
+                const mouseY = event.clientY;
+
+                // Check if the mouse is over any card to flip it
+                for (let card of cards) {
+                    if (isOverCard(mouseX, mouseY, card)) {
+                        card.faceUp = !card.faceUp;
+                        break;
+                    }
+                }
+            });
+
+            function isOverDeck(x, y) {
+                return x >= deck.x && x <= deck.x + deck.width &&
+                       y >= deck.y && y <= deck.y + deck.height;
+            }
+
+            function isOverCard(x, y, card) {
+                return x >= card.x && x <= card.x + card.width &&
+                       y >= card.y && y <= card.y + card.height;
+            }
+
+            function drawDeck() {
+                ctx.fillStyle = "white";
+                ctx.fillRect(deck.x, deck.y, deck.width, deck.height);
+                ctx.strokeStyle = "black";
+                ctx.strokeRect(deck.x, deck.y, deck.width, deck.height);
+            }
+
+            function drawCards() {
+                cards.forEach(card => {
+                    ctx.fillStyle = card.faceUp ? frontColor : backColor;
+                    ctx.fillRect(card.x, card.y, card.width, card.height);
+                    ctx.strokeStyle = "black";
+                    ctx.strokeRect(card.x, card.y, card.width, card.height);
+
+                    if (card.faceUp) {
+                        ctx.fillStyle = suitColors[card.value === "Joker" ? "Joker" : card.suit]; // Use suit color or Joker color
+                        ctx.font = "20px Arial";
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        if (card.value === "Joker") {
+                            ctx.fillText("Joker", card.x + card.width / 2, card.y + card.height / 2);
+                        } else {
+                            ctx.fillText(`${card.value} ${card.suit}`, card.x + card.width / 2, card.y + card.height / 2);
+                        }
+                    }
+                });
+            }
+
+            function clearCanvas() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+
+            function gameLoop() {
+                clearCanvas();
+                drawDeck();
+                drawCards();
+                requestAnimationFrame(gameLoop);
+            }
+
+            // Start the game loop
+            gameLoop();
+
+            // Set front and back colors to desired RGB values
+            frontColor = "rgb(255, 255, 255)";
+            backColor = "rgb(255, 255, 255)";
+        });
+    </script>
+</body>
+</html>
+
+
